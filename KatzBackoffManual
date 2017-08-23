@@ -1,0 +1,76 @@
+#NOTE - Data is not available here, only the functions for general evaluation 
+
+#uses Quanteda 
+
+fulldfm <- function(txt, numgrams){ 
+        dfm(txt, remove_numbers = TRUE, remove_punct = TRUE, remove_symbols = TRUE, 
+            remove_twitter = TRUE, remove_hyphens = TRUE, ngrams = numgrams)
+}
+#uses quanteda package's document frequency matrix function 
+
+removefirstword <- function(inputtext) {
+        wordtoremove <- unlist(strsplit(inputtext," ",fixed=TRUE))[1]
+        #only first occurance 
+        inputtext <- sub(wordtoremove,"",inputtext)
+        return(inputtext)
+}
+getlastword <- function(inputtext){ 
+        numwords <- length(fulldfm(inputtext,1))
+        lastword <- unlist(strsplit(inputtext," ",fixed=TRUE))[numwords]
+        return(lastword)
+        }
+
+predmodel <- function(inputtext, numpreds = 5){
+        #check inputs 
+        if(class(inputtext) != "character"){
+                return("please input only characters (a-z)")}
+        
+        workingtext <- char_tolower(inputtext) #workingtext may change as needed 
+        #also ensure it is all lowercase 
+        
+        repeat{
+                
+        numwords <- length(fulldfm(workingtext,1)) # number of unigrams in input
+        #removes numbers, symbols, twitter symbols, punctuation and hyphens
+        #this will decrease by 1 for each repeat
+        
+        highestngram <- fulldfm(combinedcorpus,numgrams = numwords +1)
+        #n-grams of workingtext plus 1 (the possible predicted word)
+        
+        numberofgrams <- ncol(highestngram) 
+        #number of columns, i.e. possible predictions
+        
+        sortedgrams <- names(topfeatures(highestngram,numberofgrams))
+        sortedgrams <- gsub("_"," ",sortedgrams) 
+        #returns all the features, sorted by frequency, with underscore removed
+
+        greptext <- paste0("^",workingtext)
+         #note we only want those that BEGIN with the working text 
+        #otherwise we could predict the word before our text on accident 
+        
+        filteredindex <- grep(greptext, sortedgrams)
+        #returns the features containing the input text, could be zero 
+        #if you are seeking too perfect a fit 
+        
+        if(length(filteredindex) != 0){
+                break
+        }
+        #stop repeating if a possible prediction is found
+        
+        workingtext <- removefirstword(workingtext) 
+        #if prediction is not found, remove the first word and repeat 
+        
+        
+        } #repeats the process until at least 1 entry is found to match the 
+        #n-gram, i.e. until at least 1 prediction is possible 
+        
+        relevantgrams <- sortedgrams[filteredindex]
+        #all the possible predictions sorted by frequency 
+        
+        finalgrams <- relevantgrams[1:numpreds]
+        
+        predicted <-  sapply(finalgrams,getlastword)
+        names(predicted) <- 1:numpreds
+        
+        return(predicted)
+}
